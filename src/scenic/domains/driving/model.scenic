@@ -31,7 +31,7 @@ user uses the :option:`--param` command-line option to specify the map.
 from abc import ABC, abstractmethod
 
 from scenic.domains.driving.workspace import DrivingWorkspace
-from scenic.domains.driving.roads import ManeuverType, Network
+from scenic.domains.driving.roads import ManeuverType, Network, NetworkElement, Road, Lane, LaneSection, Intersection
 from scenic.domains.driving.actions import *
 from scenic.domains.driving.behaviors import *
 
@@ -48,44 +48,13 @@ import numpy as np
 # if 'map' not in globalParameters:
 #     raise RuntimeError('need to specify map before importing driving model '
 #                        '(set the global parameter "map")')
-if 'map_options' not in globalParameters:
-    param map_options = {}
-
-boston_network = Network.fromPickle('/Users/edwardkim/Desktop/scenic/src/scenic/domains/driving/boston_network.pickle')
-
-dataroot = '/Users/edwardkim/Desktop/scenic'
-map_api = NuScenesMap(dataroot=dataroot, map_name='boston-seaport')
-
-def get_traffic_flow(point):
-    lane_token = map_api.record_on_point(point[0], point[1], 'lane')
-
-    if lane_token == '':
-        return 0
-
-    lane_rec = map_api.get('lane', lane_token)
-
-    from_edge = map_api.get('line', lane_rec['from_edge_line_token'])
-    to_edge = map_api.get('line', lane_rec['to_edge_line_token'])
-
-    from_nodes = [map_api.get('node', t) for t in from_edge['node_tokens']]
-    from_nodes = [np.array([n['x'], n['y']]) for n in from_nodes]
-    to_nodes = [map_api.get('node', t) for t in to_edge['node_tokens']]
-    to_nodes = [np.array([n['x'], n['y']]) for n in to_nodes]
-
-    # Compute traffic flow vector using midpoints of edges
-    from_mid = (from_nodes[0] + from_nodes[1]) / 2
-    to_mid = (to_nodes[0] + to_nodes[1]) / 2
-    traffic_flow_vec = to_mid - from_mid
-
-    heading = np.arctan2(traffic_flow_vec[1], traffic_flow_vec[0])
-
-    return heading - np.pi / 2
-
-boston_network.roadDirection = VectorField('roadDirection', get_traffic_flow)
+if 'map' not in globalParameters:
+    raise RuntimeError('need to specify map')
+param map_options = {}
 
 #: The road network being used for the scenario, as a `Network` object.
 # network : Network = Network.fromFile(globalParameters.map, **globalParameters.map_options)
-network: Network = boston_network
+network: Network = Network.fromFile(globalParameters.map, **globalParameters.map_options)
 
 workspace = DrivingWorkspace(network)
 
@@ -109,6 +78,10 @@ roadOrShoulder : Region = road.union(shoulder)
 
 #: The union of all intersections.
 intersection : Region = network.intersectionRegion
+
+drivableRoad : NetworkElement = Uniform(*network.lanes, *network.intersections)
+roadsOrIntersections : NetworkElement = Uniform(*network.intersections, *network.lanes)
+roadRegion : Region = network.drivableRegion
 
 #: A :obj:`VectorField` representing the nominal traffic direction at a given point.
 #:

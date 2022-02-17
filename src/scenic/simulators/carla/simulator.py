@@ -140,7 +140,7 @@ class CarlaSimulation(DrivingSimulation):
 						self.sensors = []
 
 						for sensor in sensors:
-							t_x, t_y, t_z = sensor['transform']['location']
+							t_x, t_y, t_z = sensor['transform'] #['location']
 							loc = carla.Location(x=t_x, y=t_y, z=t_z)
 							rot = carla.Rotation()
 							if 'rotation' in sensor['transform']:
